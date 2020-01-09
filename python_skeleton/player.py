@@ -23,6 +23,9 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
+        self.VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+        self.wins_dict = {v : 1 for v in self.VALUES}
+        self.showdowns_dict = {v : 2 for v in self.VALUES}
         pass
 
     def handle_new_round(self, game_state, round_state, active):
@@ -56,11 +59,22 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
-        #my_delta = terminal_state.deltas[active]  # your bankroll change from this round
-        #previous_state = terminal_state.previous_state  # RoundState before payoffs
-        #street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
-        #my_cards = previous_state.hands[active]  # your cards
-        #opp_cards = previous_state.hands[1-active]  # opponent's cards or [] if not revealed
+        my_delta = terminal_state.deltas[active]  # your bankroll change from this round
+        previous_state = terminal_state.previous_state  # RoundState before payoffs
+        street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
+        my_cards = previous_state.hands[active]  # your cards
+        opp_cards = previous_state.hands[1-active]  # opponent's cards or [] if not revealed
+        if opp_cards != []:  # we have a showdown
+            if my_delta > 0:  # we won
+                self.wins_dict[my_cards[0][0]] += 1
+                self.wins_dict[my_cards[1][0]] += 1
+            self.showdowns_dict[my_cards[0][0]] += 1
+            self.showdowns_dict[my_cards[1][0]] += 1
+            if my_delta < 0:  # we lost
+                self.wins_dict[opp_cards[0][0]] += 1
+                self.wins_dict[opp_cards[1][0]] += 1
+            self.showdowns_dict[opp_cards[0][0]] += 1
+            self.showdowns_dict[opp_cards[1][0]] += 1
         pass
 
     def get_action(self, game_state, round_state, active):

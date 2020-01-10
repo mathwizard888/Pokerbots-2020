@@ -6,6 +6,7 @@ from skeleton.states import GameState, TerminalState, RoundState
 from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND
 from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
+import random
 
 
 class Player(Bot):
@@ -155,7 +156,6 @@ class Player(Bot):
         if CheckAction in legal_actions:
             return CheckAction()
         return FoldAction()
-
 
 if __name__ == '__main__':
     run_bot(Player(), parse_args())

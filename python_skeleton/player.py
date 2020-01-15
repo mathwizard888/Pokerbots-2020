@@ -56,7 +56,6 @@ class Player(Bot):
                     perm_dict[card] = permuted_card
             # we've gone through the whole deck
             self.proposal_perms.append(perm_dict)
-        self.folds = 0
 
     def handle_new_round(self, game_state, round_state, active):
         '''
@@ -270,9 +269,6 @@ class Player(Bot):
             
         if CheckAction in legal_actions:
             return CheckAction()
-        if street == 0 and opp_stack == 198:
-            self.folds += 1
-            print(self.folds)
         return FoldAction()
 
 if __name__ == '__main__':

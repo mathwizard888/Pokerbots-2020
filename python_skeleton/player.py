@@ -157,11 +157,28 @@ class Player(Bot):
         opp_contribution = STARTING_STACK - opp_stack  # the number of chips your opponent has contributed to the pot
         pot_after_continue = my_contribution + opp_contribution + continue_cost
         pot_odds = continue_cost / pot_after_continue
+
+        # estimate card ranks
+        valid_perms = 0
+        my_ranks = [0,0]
+        board_ranks = [0 for _ in range(street)]
+        for perm in self.proposal_perms:
+            valid_perms += 1
+            for i in range(2):
+                my_ranks[i] += perm[my_cards[i]].rank
+            for i in range(street):
+                board_ranks[i] += perm[board_cards[i]].rank
+        for i in range(2):
+            my_ranks[i] /= valid_perms
+        my_rel_ranks = [0,0]
+        for j in range(street):
+            board_ranks[j] /= valid_perms
+            for i in range(2):
+                if board_ranks[j] <= my_ranks[i]:
+                    my_rel_ranks[i] += 1
+
+        strength = 0  # estimate hand strength
         
-        first_card_winrate = self.wins_dict[my_cards[0][0]] / self.showdowns_dict[my_cards[0][0]]
-        second_card_winrate = self.wins_dict[my_cards[1][0]] / self.showdowns_dict[my_cards[1][0]]
-        # for indexing
-        winrates = [first_card_winrate, second_card_winrate]
         # count up how often our cards agree with the board cards
         agree_counts = [0, 0]
         for card in board_cards:
@@ -169,68 +186,95 @@ class Player(Bot):
             for i in range(2):
                 if my_cards[i][0] == card[0]:
                     agree_counts[i] += 1
-                    
-        if opp_stack == 0: # all-in is a weird edge case
-            # TWO-PAIR OR BETTER
-            if sum(agree_counts) >= 2:
+                    strength += my_rel_ranks[i]/(2*street) + agree_counts[i]/20
+        # pocket pair adjustment
+        if my_cards[0][0] == my_cards[1][0]:
+            if street > 0:
+                strength += my_rel_ranks[0]/(2*street) + agree_counts[0]/5
+            else:
+                strength += (my_ranks[0]+1)/13
+
+        # flush adjustment
+        for suit in 'cdhs':
+            my_count = 0
+            board_count = 0
+            for i in range(2):
+                if my_cards[i][1] == suit:
+                    my_count += 1
+            for i in range(street):
+                if board_cards[i][1] == suit:
+                    board_count += 1
+            # add for my flush
+            if my_count + board_count >= street:
+                if my_count == 2:
+                    if street == 0:
+                        strength += 0.1
+                    elif street == 3:
+                        if board_count == 1:
+                            strength += 0.05
+                        elif board_count == 2:
+                            strength += 0.4
+                        else:
+                            strength += 1
+                    elif street == 4:
+                        if board_count == 2:
+                            strength += 0.2
+                        elif board_count >= 3:
+                            strength += 1
+                    else:
+                        strength += 1
+                elif my_count == 1:
+                    if street == 3:
+                        if board_count == 2:
+                            strength += 0.05
+                        elif board_count == 3:
+                            strength += 0.4
+                    elif street == 4:
+                        if board_count == 3:
+                            strength += 0.2
+                        elif board_count == 4:
+                            strength += 1
+                    elif street == 5:
+                        strength += 1
+                else:
+                    if street == 3:
+                        strength += 0.05
+                    elif street == 4:
+                        strength += 0.2
+                    elif street == 5:
+                        strength += 1
+            # subtract for opp flush
+            if street == 3:
+                if board_count == 2:
+                    strength -= 0.05
+                elif board_count == 3:
+                    strength -= 0.3
+            elif street == 4:
+                if board_count == 3:
+                    strength -= 0.15
+                elif board_count == 4:
+                    strength -= 0.6
+            elif street == 5:
+                if board_count == 3:
+                    strength -= 0.05
+                elif board_count == 4:
+                    strength -= 0.2
+                elif board_count == 5:
+                    strength -= 1
+
+        # play based on strength
+        if pot_odds < strength:
+            if random.random() < strength:
+                min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
+                min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
+                max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
+                raise_amount = my_pip + continue_cost + int(0.75 * pot_after_continue)
+                raise_amount = min(raise_amount, max_raise)
+                raise_amount = max(raise_amount, min_raise)
+                if RaiseAction in legal_actions:
+                    return RaiseAction(raise_amount)
+            if CallAction in legal_actions:
                 return CallAction()
-            # ONE PAIR IN FIRST CARD
-            if agree_counts[0] == 1:
-                if pot_odds < winrates[0]:
-                    return CallAction()
-            # ONE PAIR IN SECOND CARD
-            if agree_counts[1] == 1:
-                if pot_odds < winrates[1]:
-                    return CallAction()
-            # POCKET PAIR
-            if my_cards[0][0] == my_cards[1][0]:
-                if pot_odds < winrates[0]:
-                    return CallAction()
-            if first_card_winrate > 0.5 and second_card_winrate > 0.5:
-                if pot_odds < max(first_card_winrate, second_card_winrate) / (street + 1):
-                    return CallAction()
-            
-        if RaiseAction in legal_actions:
-            min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
-            min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
-            max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
-            raise_amount = my_pip + continue_cost + int(0.75 * pot_after_continue)
-            raise_amount = min(raise_amount, max_raise)
-            raise_amount = max(raise_amount, min_raise)
-            # TWO-PAIR OR BETTER
-            if sum(agree_counts) >= 2:
-                return RaiseAction(raise_amount)
-            # ONE PAIR IN FIRST CARD
-            if agree_counts[0] == 1:
-                if random.random() < winrates[0]:
-                    return RaiseAction(raise_amount)
-                if CheckAction in legal_actions:
-                    return CheckAction()
-                if pot_odds < winrates[0]:
-                    return CallAction()
-            # ONE PAIR IN SECOND CARD
-            if agree_counts[1] == 1:
-                if random.random() < winrates[1]:
-                    return RaiseAction(raise_amount)
-                if CheckAction in legal_actions:
-                    return CheckAction()
-                if pot_odds < winrates[1]:
-                    return CallAction()
-            # POCKET PAIR
-            if my_cards[0][0] == my_cards[1][0]:
-                if random.random() < winrates[0]:
-                    return RaiseAction(raise_amount)
-                if CheckAction in legal_actions:
-                    return CheckAction()
-                if pot_odds < winrates[0]:
-                    return CallAction()
-            if first_card_winrate > 0.5 and second_card_winrate > 0.5:
-                if random.random() < max(first_card_winrate, second_card_winrate):
-                    return RaiseAction(min_raise)
-                if CheckAction in legal_actions:
-                    return CheckAction()
-                if pot_odds < max(first_card_winrate, second_card_winrate) / (street + 1):
-                    return CallAction()
             
         if CheckAction in legal_actions:
             return CheckAction()

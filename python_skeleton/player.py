@@ -39,8 +39,6 @@ class Player(Bot):
         Nothing.
         '''
         self.VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-        self.wins_dict = {v : 1 for v in self.VALUES}
-        self.showdowns_dict = {v : 2 for v in self.VALUES}
         # particle filter
         values = list('23456789TJQKA')
         suits = list('cdhs')
@@ -58,6 +56,7 @@ class Player(Bot):
                     perm_dict[card] = permuted_card
             # we've gone through the whole deck
             self.proposal_perms.append(perm_dict)
+        self.folds = 0
 
     def handle_new_round(self, game_state, round_state, active):
         '''
@@ -97,16 +96,6 @@ class Player(Bot):
         opp_cards = previous_state.hands[1-active]  # opponent's cards or [] if not revealed
         board_cards = previous_state.deck[:street]
         if opp_cards != []:  # we have a showdown
-            if my_delta > 0:  # we won
-                self.wins_dict[my_cards[0][0]] += 1
-                self.wins_dict[my_cards[1][0]] += 1
-            self.showdowns_dict[my_cards[0][0]] += 1
-            self.showdowns_dict[my_cards[1][0]] += 1
-            if my_delta < 0:  # we lost
-                self.wins_dict[opp_cards[0][0]] += 1
-                self.wins_dict[opp_cards[1][0]] += 1
-            self.showdowns_dict[opp_cards[0][0]] += 1
-            self.showdowns_dict[opp_cards[1][0]] += 1
             # update particle filter
             new_perms = []
             for proposal_perm in self.proposal_perms:  # check if valid
@@ -262,6 +251,9 @@ class Player(Bot):
                 elif board_count == 5:
                     strength -= 1
 
+        # adjust based on game stage
+        strength += sum(my_ranks)/(24*(street+3))
+
         # play based on strength
         if pot_odds < strength:
             if random.random() < strength:
@@ -278,6 +270,9 @@ class Player(Bot):
             
         if CheckAction in legal_actions:
             return CheckAction()
+        if street == 0 and opp_stack == 198:
+            self.folds += 1
+            print(self.folds)
         return FoldAction()
 
 if __name__ == '__main__':

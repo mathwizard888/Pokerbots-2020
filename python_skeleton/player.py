@@ -45,7 +45,7 @@ class Player(Bot):
         values = list('23456789TJQKA')
         suits = list('cdhs')
         self.proposal_perms = []
-        for j in range(1000):
+        for j in range(5000):
             # proposal_perm is a list with entries from 0 to 12
             proposal_perm = self.permute_values()
             perm_dict = {}

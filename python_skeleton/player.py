@@ -43,7 +43,7 @@ class Player(Bot):
         values = list('23456789TJQKA')
         suits = list('cdhs')
         self.proposal_perms = []
-        for j in range(5000):
+        for j in range(10000):
             # proposal_perm is a list with entries from 0 to 12
             proposal_perm = self.permute_values()
             perm_dict = {}
@@ -251,7 +251,7 @@ class Player(Bot):
                     strength -= 1
 
         # adjust based on game stage
-        strength += sum(my_ranks)/(24*(street+3))
+        strength += sum(my_ranks)/(24*(street+2))
 
         # play based on strength
         if pot_odds < strength:

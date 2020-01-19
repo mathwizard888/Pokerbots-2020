@@ -43,7 +43,7 @@ class Player(Bot):
         values = list('23456789TJQKA')
         suits = list('cdhs')
         self.proposal_perms = []
-        for j in range(10000):
+        for j in range(50000):
             # proposal_perm is a list with entries from 0 to 12
             proposal_perm = self.permute_values()
             perm_dict = {}
@@ -183,6 +183,8 @@ class Player(Bot):
                 strength += (my_ranks[0]+1)/13
 
         # flush adjustment
+        my_probs = [[0,0,0.1],[],[],[0,0,0,0.05,0.4,1],[0,0,0,0,0.2,1,1],[0,0,0,0,0,1,1,1]]
+        opp_probs = [[0.05,0.3],[0,0.15,0.6],[0,0.05,0.2,1]]
         for suit in 'cdhs':
             my_count = 0
             board_count = 0
@@ -193,62 +195,10 @@ class Player(Bot):
                 if board_cards[i][1] == suit:
                     board_count += 1
             # add for my flush
-            if my_count + board_count >= street:
-                if my_count == 2:
-                    if street == 0:
-                        strength += 0.1
-                    elif street == 3:
-                        if board_count == 1:
-                            strength += 0.05
-                        elif board_count == 2:
-                            strength += 0.4
-                        else:
-                            strength += 1
-                    elif street == 4:
-                        if board_count == 2:
-                            strength += 0.2
-                        elif board_count >= 3:
-                            strength += 1
-                    else:
-                        strength += 1
-                elif my_count == 1:
-                    if street == 3:
-                        if board_count == 2:
-                            strength += 0.05
-                        elif board_count == 3:
-                            strength += 0.4
-                    elif street == 4:
-                        if board_count == 3:
-                            strength += 0.2
-                        elif board_count == 4:
-                            strength += 1
-                    elif street == 5:
-                        strength += 1
-                else:
-                    if street == 3:
-                        strength += 0.05
-                    elif street == 4:
-                        strength += 0.2
-                    elif street == 5:
-                        strength += 1
+            strength += my_probs[street][my_count+board_count]
             # subtract for opp flush
-            if street == 3:
-                if board_count == 2:
-                    strength -= 0.05
-                elif board_count == 3:
-                    strength -= 0.3
-            elif street == 4:
-                if board_count == 3:
-                    strength -= 0.15
-                elif board_count == 4:
-                    strength -= 0.6
-            elif street == 5:
-                if board_count == 3:
-                    strength -= 0.05
-                elif board_count == 4:
-                    strength -= 0.2
-                elif board_count == 5:
-                    strength -= 1
+            if street > 0 and board_count >= 2:
+                strength -= opp_probs[street-3][board_count-2]
 
         # adjust based on game stage
         strength += sum(my_ranks)/(24*(street+2))

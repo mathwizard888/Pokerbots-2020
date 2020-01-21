@@ -38,8 +38,7 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
-        self.VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-        # particle filter
+        self.VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']        # particle filter
         values = list('23456789TJQKA')
         suits = list('cdhs')
         self.proposal_perms = []
@@ -149,59 +148,72 @@ class Player(Bot):
         # estimate card ranks
         valid_perms = 0
         my_ranks = [0,0]
+        my_rel_ranks = [0,0]
         board_ranks = [0 for _ in range(street)]
         for perm in self.proposal_perms:
             valid_perms += 1
             for i in range(2):
                 my_ranks[i] += perm[my_cards[i]].rank
-            for i in range(street):
-                board_ranks[i] += perm[board_cards[i]].rank
+                for j in range(street):
+                    if i == 0:
+                        board_ranks[j] += perm[board_cards[j]].rank
+                    if perm[board_cards[j]].rank <= perm[my_cards[i]].rank:
+                        my_rel_ranks[i] += 1
         for i in range(2):
             my_ranks[i] /= valid_perms
-        my_rel_ranks = [0,0]
+            my_rel_ranks[i] /= valid_perms
         for j in range(street):
             board_ranks[j] /= valid_perms
-            for i in range(2):
-                if board_ranks[j] <= my_ranks[i]:
-                    my_rel_ranks[i] += 1
 
         strength = 0  # estimate hand strength
         
         # count up how often our cards agree with the board cards
         agree_counts = [0, 0]
-        for card in board_cards:
+        board_agree_counts = [0 for _ in range(street)]
+        for j in range(street):
             # increase agree_counts each time values agree
             for i in range(2):
-                if my_cards[i][0] == card[0]:
+                if my_cards[i][0] == board_cards[j][0]:
                     agree_counts[i] += 1
-                    strength += my_rel_ranks[i]/(2*street) + agree_counts[i]/20
+                    board_agree_counts[j] += 1
+                    strength += (my_rel_ranks[i]+street)/(4*street) + agree_counts[i]/20
+
+        board_matches = 0
+        for j in range(street):
+            for i in range(j):
+                if board_cards[i][0] == board_cards[j][0] and board_agree_counts[i] == 0:
+                    board_matches += 1
+                    
         # pocket pair adjustment
         if my_cards[0][0] == my_cards[1][0]:
             if street > 0:
-                strength += my_rel_ranks[0]/(2*street) + agree_counts[0]/5
+                strength += (my_rel_ranks[0]+street)/(4*street) + agree_counts[0]/5
             else:
-                strength += (my_ranks[0]+1)/13
+                strength += (my_ranks[0]+12)/24
+            if board_matches < 3:
+                strength -= 0.1*board_matches
+        else:
+            strength -= 0.1*board_matches
+            strength += sum(my_ranks)/(30*(street+2))
 
         # flush adjustment
-        my_probs = [[0,0,0.1],[],[],[0,0,0,0.05,0.4,1],[0,0,0,0,0.2,1,1],[0,0,0,0,0,1,1,1]]
-        opp_probs = [[0.05,0.3],[0,0.15,0.6],[0,0.05,0.2,1]]
-        for suit in 'cdhs':
-            my_count = 0
-            board_count = 0
-            for i in range(2):
-                if my_cards[i][1] == suit:
-                    my_count += 1
-            for i in range(street):
-                if board_cards[i][1] == suit:
-                    board_count += 1
-            # add for my flush
-            strength += my_probs[street][my_count+board_count]
-            # subtract for opp flush
-            if street > 0 and board_count >= 2:
-                strength -= opp_probs[street-3][board_count-2]
-
-        # adjust based on game stage
-        strength += sum(my_ranks)/(24*(street+2))
+        if sum(agree_counts) < 3:
+            my_probs = [[0,0,0.1],[],[],[0,0,0,0.05,0.4,1],[0,0,0,0,0.2,1,1],[0,0,0,0,0,1,1,1]]
+            opp_probs = [[0.05,0.3],[0,0.15,0.6],[0,0.05,0.2,1]]
+            for suit in 'cdhs':
+                my_count = 0
+                board_count = 0
+                for i in range(2):
+                    if my_cards[i][1] == suit:
+                        my_count += 1
+                for i in range(street):
+                    if board_cards[i][1] == suit:
+                        board_count += 1
+                # add for my flush
+                strength += my_probs[street][my_count+board_count]
+                # subtract for opp flush
+                if street > 0 and board_count >= 2:
+                    strength -= (pot_odds+opp_probs[street-3][board_count-2]) / (pot_odds+1)
 
         # play based on strength
         if pot_odds < strength:

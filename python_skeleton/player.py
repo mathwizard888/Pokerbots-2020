@@ -43,7 +43,7 @@ class Player(Bot):
         values = list('23456789TJQKA')
         suits = list('cdhs')
         self.proposal_perms = []
-        for j in range(100000):
+        for j in range(20000):
             # proposal_perm is a list with entries from 0 to 12
             proposal_perm = self.permute_values()
             perm_dict = {}
@@ -70,14 +70,10 @@ class Player(Bot):
         Nothing.
         '''
         my_bankroll = game_state.bankroll  # the total number of chips you've gained or lost from the beginning of the game to the start of this round
-        game_clock = game_state.game_clock  # the total number of seconds your bot has left to play this game
+        #game_clock = game_state.game_clock  # the total number of seconds your bot has left to play this game
         round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
         #my_cards = round_state.hands[active]  # your cards
         big_blind = bool(active)  # True if you are the big blind
-        if game_clock < 1:
-            print(round_num)
-        if round_num == 1000:
-            print(game_clock)
         if my_bankroll > (1001-round_num) + (1001-round_num-int(big_blind))//2:
             self.guar_win = True
 

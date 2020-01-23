@@ -189,7 +189,6 @@ class Player(Bot):
 
         # flush adjustment
         my_probs = [[0,0,0.1],[],[],[0,0,0,0.05,0.4,1],[0,0,0,0,0.2,1,1],[0,0,0,0,0,1,1,1]]
-        opp_probs = [[0.05,0.3],[0,0.15,0.6],[0,0.05,0.2,1]]
         for suit in 'cdhs':
             my_count = 0
             board_count = 0
@@ -201,9 +200,6 @@ class Player(Bot):
                     board_count += 1
             # add for my flush
             strength += my_probs[street][my_count+board_count]
-            # subtract for opp flush
-            if street > 0 and board_count >= 2:
-                strength -= opp_probs[street-3][board_count-2]
 
         # adjust based on game stage
         strength += sum(my_ranks)/(24*(street+2))

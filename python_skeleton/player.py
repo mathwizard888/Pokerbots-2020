@@ -202,7 +202,7 @@ class Player(Bot):
             # add for my flush
             strength += my_probs[street][my_count+board_count]
             # subtract for opp flush
-            if street > 0 and board_count >= 22:
+            if street > 0 and board_count >= 2:
                 strength -= opp_probs[street-3][board_count-2]
 
         # adjust based on game stage

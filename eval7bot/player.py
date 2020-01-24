@@ -38,6 +38,8 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
+        self.inv_tightness = 1
+        self.agression = 1
         self.guar_win = False
         # particle filter
         values = list('23456789TJQKA')
@@ -74,8 +76,13 @@ class Player(Bot):
         round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
         #my_cards = round_state.hands[active]  # your cards
         big_blind = bool(active)  # True if you are the big blind
+        if self.guar_win:
+            return
         if my_bankroll > (1001-round_num) + (1001-round_num-int(big_blind))//2:
             self.guar_win = True
+        self.inv_tightness = max(0.5, 1 - 2/3 * my_bankroll/(1001-round_num))
+        self.inv_tightness = min(self.inv_tightness, 1.5 + round_num/2000)
+        self.aggression = 1 - 0.1 * my_bankroll/(1001-round_num)
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -209,6 +216,7 @@ class Player(Bot):
 
         # potential flush adjustment
         my_probs = [[0,0,0.1],[],[],[0,0,0,0.05,0.4,1],[0,0,0,0,0.2,1,1],[0,0,0,0,0,1,1,1]]
+        opp_probs = [[0.05,0.3],[0,0.15,0.6],[0,0.05,0.2,1]]
         for suit in 'cdhs':
             my_count = 0
             board_count = 0
@@ -218,16 +226,17 @@ class Player(Bot):
             for i in range(street):
                 if board_cards[i][1] == suit:
                     board_count += 1
-            # add for my flush
             if my_strength < 0.942:
                 my_strength += my_probs[street][my_count+board_count]*(0.942-my_strength)
+            if board_count > 2 and street > 0 and board_strength < 0.942:
+                board_strength += opp_probs[street-3][board_count-2]*(0.942-board_strength)
 
         # play based on strength
         strength = my_strength - board_strength
         if street == 0:
             strength /= 0.612
-        if pot_odds < strength:
-            if random.random() < strength and RaiseAction in legal_actions:
+        if pot_odds < strength * self.inv_tightness:
+            if random.random() < strength * self.agression and RaiseAction in legal_actions:
                 min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
                 min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
                 max_cost = max_raise - my_pip  # the cost of a maximum bet/raise

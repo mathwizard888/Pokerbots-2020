@@ -39,7 +39,7 @@ class Player(Bot):
         Nothing.
         '''
         self.inv_tightness = 1
-        self.agression = 1
+        self.aggression = 1
         self.guar_win = False
         # particle filter
         values = list('23456789TJQKA')
@@ -236,7 +236,7 @@ class Player(Bot):
         if street == 0:
             strength /= 0.612
         if pot_odds < strength * self.inv_tightness:
-            if random.random() < strength * self.agression and RaiseAction in legal_actions:
+            if random.random() < strength * self.aggression and RaiseAction in legal_actions:
                 min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
                 min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
                 max_cost = max_raise - my_pip  # the cost of a maximum bet/raise

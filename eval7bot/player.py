@@ -228,7 +228,7 @@ class Player(Bot):
                     board_count += 1
             if my_strength < 0.942:
                 my_strength += my_probs[street][my_count+board_count]*(0.942-my_strength)
-            if board_count > 2 and street > 0 and board_strength < 0.942:
+            if board_count >= 2 and street > 0 and board_strength < 0.942:
                 board_strength += opp_probs[street-3][board_count-2]*(0.942-board_strength)
 
         # play based on strength

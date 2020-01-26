@@ -41,6 +41,7 @@ class Player(Bot):
         self.inv_tightness = 1
         self.aggression = 1
         self.guar_win = False
+        self.opp_raises = 0
         # particle filter
         values = list('23456789TJQKA')
         suits = list('cdhs')
@@ -83,6 +84,7 @@ class Player(Bot):
         self.inv_tightness = max(0.5, 1 - 2/3 * my_bankroll/(1001-round_num))
         self.inv_tightness = min(self.inv_tightness, 1.5 + round_num/2000)
         self.aggression = 1 - 0.1 * my_bankroll/(1001-round_num)
+        self.opp_raises = 0
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -200,6 +202,9 @@ class Player(Bot):
         pot_after_continue = my_contribution + opp_contribution + continue_cost
         pot_odds = continue_cost / pot_after_continue
 
+        if continue_cost > 0 and my_stack < 199:
+            self.opp_raises += 1
+
         # find average hand strength
         valid_perms = 0
         my_strength = 0
@@ -232,6 +237,7 @@ class Player(Bot):
                 board_strength += opp_probs[street-3][board_count-2]*(0.942-board_strength)
 
         # play based on strength
+        board_strength *= 1 + 0.2*self.opp_raises
         strength = my_strength - board_strength
         if street == 0:
             strength /= 0.612

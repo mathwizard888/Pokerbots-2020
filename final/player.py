@@ -162,20 +162,21 @@ class Player(Bot):
         valid_perms = 0
         my_ranks = [0,0]
         board_ranks = [0 for _ in range(street)]
+        my_rel_ranks = [0,0]
         for perm in self.proposal_perms:
             valid_perms += 1
             for i in range(2):
                 my_ranks[i] += perm[my_cards[i]].rank
-            for i in range(street):
-                board_ranks[i] += perm[board_cards[i]].rank
+                for j in range(street):
+                    if i == 0:
+                        board_ranks[j] += perm[board_cards[j]].rank
+                    if perm[my_cards[i]].rank >= perm[board_cards[j]].rank:
+                        my_rel_ranks[i] += 1
         for i in range(2):
             my_ranks[i] /= valid_perms
-        my_rel_ranks = [0,0]
+            my_rel_ranks[i] /= valid_perms
         for j in range(street):
             board_ranks[j] /= valid_perms
-            for i in range(2):
-                if board_ranks[j] <= my_ranks[i]:
-                    my_rel_ranks[i] += 1
 
         strength = 0  # estimate hand strength
         
@@ -190,7 +191,7 @@ class Player(Bot):
         # pocket pair adjustment
         if my_cards[0][0] == my_cards[1][0]:
             if street > 0:
-                strength += my_rel_ranks[0]/(2*street) + agree_counts[0]/5
+                strength += my_rel_ranks[0]/(2*street) + 2*agree_counts[0]/5
             else:
                 strength += (my_ranks[0]+1)/13
 
@@ -213,19 +214,18 @@ class Player(Bot):
                 strength -= opp_probs[street-3][board_count-2]
 
         # adjust based on game stage
-        strength += sum(my_ranks)/(24*(street+2))
+        strength += (1.5*max(my_ranks)+0.5*min(my_ranks))/(24*(street+2))
 
         # play based on strength
         if pot_odds < strength * self.inv_tightness:
-            if random.random() < strength * self.aggression:
+            if RaiseAction in legal_actions and random.random() < strength * self.aggression:
                 min_raise, max_raise = round_state.raise_bounds()  # the smallest and largest numbers of chips for a legal bet/raise
                 min_cost = min_raise - my_pip  # the cost of a minimum bet/raise
                 max_cost = max_raise - my_pip  # the cost of a maximum bet/raise
                 raise_amount = my_pip + continue_cost + int(0.75 * pot_after_continue)
                 raise_amount = min(raise_amount, max_raise)
                 raise_amount = max(raise_amount, min_raise)
-                if RaiseAction in legal_actions:
-                    return RaiseAction(raise_amount)
+                return RaiseAction(raise_amount)
             if CallAction in legal_actions:
                 return CallAction()
             
